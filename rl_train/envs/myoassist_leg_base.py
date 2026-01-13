@@ -304,6 +304,9 @@ class MyoAssistLegBase(env_base.MujocoEnv):
         })
         # rwd_keys_wt: from MujocoEnv
         rwd_dict['dense'] = np.sum([wt * rwd_dict[key] for key, wt in self.rwd_keys_wt.items()], axis=0)
+        
+        if self.get_done(obs_dict):
+            reward -= 100.0  # Big penalty for termination
         return rwd_dict
     
     def step(self, a, **kwargs):

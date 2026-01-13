@@ -1,0 +1,148 @@
+{
+  "algo": "sac",
+  "total_timesteps": 5e6,
+  "evaluate_param_list": [
+    {
+      "num_timesteps": 2000,
+      "min_target_velocity": 1.25,
+      "max_target_velocity": 1.25,
+      "target_velocity_period": 2,
+      "velocity_mode": "UNIFORM",
+      "cam_type": "follow",
+      "cam_distance": 2.5,
+      "visualize_activation": true
+    }
+  ],
+  "logger_params": {
+    "logging_frequency": 16,
+    "evaluate_frequency": 1024
+  },
+  "env_params": {
+    "reward_keys_and_weights": {
+      "forward_reward": 1.0,
+      "muscle_activation_penalty": 0.05,
+      "muscle_activation_diff_penalty": 0.05,
+      "joint_constraint_force_penalty": 1.0,
+      "foot_force_penalty": 0.25,
+      "qpos_imitation_rewards": {
+        "pelvis_ty": 0.1,
+        "pelvis_tilt": 1.0,
+        "hip_flexion_l": 0.3,
+        "hip_flexion_r": 0.3,
+        "knee_angle_l": 1.2,
+        "knee_angle_r": 1.2,
+        "ankle_angle_l": 0.3,
+        "ankle_angle_r": 0.3
+      },
+      "qvel_imitation_rewards": {
+        "pelvis_ty": 0.01,
+        "pelvis_tilt": 0.01,
+        "hip_flexion_l": 0.03,
+        "hip_flexion_r": 0.03,
+        "knee_angle_l": 0.02,
+        "knee_angle_r": 0.02,
+        "ankle_angle_l": 0.02,
+        "ankle_angle_r": 0.02
+      },
+      "end_effector_imitation_reward": 0.0
+    },
+    "env_id": "myoAssistLegImitationExo-v0",
+    "num_envs": 8,
+    "seed": 1234,
+    "safe_height": 0.7,
+    "control_framerate": 30,
+    "physics_sim_framerate": 1200,
+    "min_target_velocity": 1.25,
+    "max_target_velocity": 1.25,
+    "min_target_velocity_period": 2,
+    "max_target_velocity_period": 10,
+    "custom_max_episode_steps": 2000,
+    "model_path": "models/22muscle_2D/myoLeg22_2D_HUMOTECH.xml",
+    "prev_trained_policy_path": null,
+    "reference_data_path": "rl_train/reference_data/short_reference_gait.npz",
+    "enable_lumbar_joint": false,
+    "lumbar_joint_fixed_angle": -0.13,
+    "lumbar_joint_damping_value": 0.05,
+    "observation_joint_pos_keys": [
+      "ankle_angle_l",
+      "ankle_angle_r",
+      "hip_flexion_l",
+      "hip_flexion_r",
+      "knee_angle_l",
+      "knee_angle_r",
+      "pelvis_tilt",
+      "pelvis_ty"
+    ],
+    "observation_joint_vel_keys": [
+      "ankle_angle_l",
+      "ankle_angle_r",
+      "hip_flexion_l",
+      "hip_flexion_r",
+      "knee_angle_l",
+      "knee_angle_r",
+      "pelvis_tilt",
+      "pelvis_tx",
+      "pelvis_ty"
+    ],
+    "observation_sensor_keys": [
+      "r_foot",
+      "l_foot",
+      "r_toes",
+      "l_toes"
+    ],
+    "joint_limit_sensor_keys": [
+      "r_knee_sensor",
+      "l_knee_sensor",
+      "r_hip_sensor",
+      "l_hip_sensor",
+      "r_ankle_sensor",
+      "l_ankle_sensor",
+      "r_mtp_sensor",
+      "l_mtp_sensor"
+    ],
+    "terrain_type": "flat",
+    "terrain_params": "",
+    "flag_random_ref_index": true,
+    "out_of_trajectory_threshold": 0.25,
+    "reference_data_keys": [
+      "ankle_angle_l",
+      "ankle_angle_r",
+      "hip_flexion_l",
+      "hip_flexion_r",
+      "knee_angle_l",
+      "knee_angle_r",
+      "pelvis_tilt",
+      "pelvis_tx",
+      "pelvis_ty"
+    ]
+  },
+  "policy_params": {
+    "net_arch": {
+      "pi": [256, 256],
+      "qf": [256, 256]
+    },
+    "activation_fn": "relu",
+    "use_expln": false,
+    "squash_output": true
+  },
+  "algorithm": "SAC",
+  "sac_params": {
+    "learning_rate": 0.0003,
+    "buffer_size": 1000000,
+    "learning_starts": 5000,
+    "batch_size": 1024,
+    "tau": 0.005,
+    "gamma": 0.99,
+    "train_freq": 64,
+    "gradient_steps": 64,
+    "ent_coef": "auto",
+    "target_entropy": -4,
+    "use_sde": false,
+    "sde_sample_freq": -1,
+    "use_sde_at_warmup": false,
+    "device": "cuda"
+  },
+  "auto_reward_adjust_params": {
+    "learning_rate": 0.0
+  }
+}

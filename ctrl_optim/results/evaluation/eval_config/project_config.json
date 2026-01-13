@@ -1,0 +1,7 @@
+{
+    "results_dir": "results/optim_results/humotech_0925_1437",
+    "evaluation_mode": "long",
+    "output_dir": "evaluation_outputs",
+    "include_best": true,
+    "include_bestlast": true
+}

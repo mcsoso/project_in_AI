@@ -1,7 +1,7 @@
 @echo off
 python train.py ^
     --musc_model 22 ^
-    --model tutorial ^
+    --model humotech ^
     --sim_time 20 ^
     --pose_key walk_left ^
     --num_strides 5 ^
@@ -20,6 +20,6 @@ python train.py ^
     --popsize 8 ^
     --maxiter 50 ^
     --threads 8 ^
-    --sigma_gain 10 ^
-    --param_path ../results/optim_results/tutorial_prep ^
-    --save_path tutorial
+    --sigma_gain 1 ^
+    --param_path ../results/optim_results/humotech_prep ^
+    --save_path humotech

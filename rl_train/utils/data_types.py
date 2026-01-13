@@ -51,9 +51,17 @@ class DictionableDataclass:
                         f"--{field_name}", 
                         type=bool, default=None, action=argparse.BooleanOptionalAction, help="Set {field_name} (True:--/False:--no-)")
                 else:
+                    # Fallback: if field_type is not directly callable (e.g. typing constructs), treat as str
+                    arg_type = field_type
+                    try:
+                        # Simple probe: call without args if it's a type; if fails, fallback to str
+                        if not callable(arg_type):
+                            raise TypeError
+                    except Exception:
+                        arg_type = str
                     parser.add_argument(
                         f"--{field_name}", 
-                        type=field_type, 
+                        type=arg_type, 
                         default=None, 
                         help=f"Set {field_name}"
                     )

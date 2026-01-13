@@ -1,12 +1,22 @@
 from dataclasses import dataclass, field
+from typing import Optional
 @dataclass
 class TrainSessionConfigBase:
+    algo: Optional[str] = None
     total_timesteps: int = 1000
+    ppo_params: Optional["TrainSessionConfigBase.PPOParams"] = None
+    a2c_params: Optional["TrainSessionConfigBase.A2CParams"] = None
+    trpo_params: Optional["TrainSessionConfigBase.TRPOParams"] = None
+    sac_params: Optional["TrainSessionConfigBase.SACParams"] = None
+    td3_params: Optional["TrainSessionConfigBase.TD3Params"] = None
+    ddpg_params: Optional["TrainSessionConfigBase.DDPGParams"] = None
+
     @dataclass
     class LoggerParams:
         logging_frequency: int = int(1)
         evaluate_frequency: int = int(64)
     logger_params: LoggerParams = field(default_factory=LoggerParams)
+    
     
     @dataclass
     class EnvParams:
@@ -69,7 +79,7 @@ class TrainSessionConfigBase:
         cam_distance: float = 2.5
         visualize_activation: bool = True
     """
-    evaluate_param_list: list[dict] = field(default_factory=list[dict])
+    evaluate_param_list: list[dict] = field(default_factory=list)
 
     @dataclass
     class PolicyParams:
@@ -134,4 +144,79 @@ class TrainSessionConfigBase:
         device: str = "cpu"
     ppo_params: PPOParams = field(default_factory=PPOParams)
 
-    
+
+    @dataclass
+    class A2CParams:
+        learning_rate: float = 7e-4
+        n_steps: int = 5
+        gamma: float = 0.99
+        gae_lambda: float = 1.0
+        ent_coef: float = 0.0
+        vf_coef: float = 0.5
+        max_grad_norm: float = 0.5
+        use_rms_prop: bool = True
+        normalize_advantage: bool = False
+        device: str = "cpu"
+
+    @dataclass
+    class TRPOParams:
+        learning_rate: float = 3e-4
+        n_steps: int = 2048
+        batch_size: int = 256
+        gamma: float = 0.99
+        gae_lambda: float = 0.95
+        cg_max_steps: int = 10
+        cg_damping: float = 0.1
+        line_search_shrinking_factor: float = 0.8
+        line_search_max_iter: int = 10
+        target_kl: float = 0.01
+        ent_coef: float = 0.0
+        vf_coef: float = 0.5
+        normalize_advantage: bool = True
+        device: str = "cpu"
+
+    @dataclass
+    class SACParams:
+        learning_rate: float = 3e-4
+        buffer_size: int = 1_000_000
+        learning_starts: int = 10_000
+        batch_size: int = 256
+        tau: float = 0.005
+        gamma: float = 0.99
+        train_freq: int = 1
+        gradient_steps: int = 1
+        ent_coef: str = "auto"
+        target_update_interval: int = 1
+        target_entropy: str = "auto"
+        device: str = "cpu"
+
+    @dataclass
+    class TD3Params:
+        learning_rate: float = 1e-3
+        buffer_size: int = 1_000_000
+        learning_starts: int = 10_000
+        batch_size: int = 256
+        tau: float = 0.005
+        gamma: float = 0.99
+        train_freq: int = 1
+        gradient_steps: int = 1
+        policy_delay: int = 2
+        target_policy_noise: float = 0.2
+        target_noise_clip: float = 0.5
+        # Optional exploration from JSON:
+        action_noise_sigma: Optional[float] = None
+        device: str = "cpu"
+
+    @dataclass
+    class DDPGParams:
+        learning_rate: float = 1e-3
+        buffer_size: int = 1_000_000
+        learning_starts: int = 10_000
+        batch_size: int = 256
+        tau: float = 0.005
+        gamma: float = 0.99
+        train_freq: int = 1
+        gradient_steps: int = 1
+        # Optional exploration from JSON:
+        action_noise_sigma: Optional[float] = None
+        device: str = "cpu"

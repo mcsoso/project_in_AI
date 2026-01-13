@@ -129,7 +129,7 @@ osl.log
 
 # MyoAssist #
 rl_train/train_logs/
-rl_train/results/
+#rl_train/results/
 cma_dump/
 
 train_bash_script.md

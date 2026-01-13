@@ -5,7 +5,66 @@ from myosuite.utils import gym
 from rl_train.utils.data_types import DictionableDataclass
 import os
 from rl_train.train.train_configs.config import TrainSessionConfigBase
+import dataclasses
+
 class EnvironmentHandler:
+    ALGO_MAP = {
+        "ppo":  ("PPO",  "ppo_params",  True),   # on-policy
+        "a2c":  ("A2C",  "a2c_params",  True),
+        "trpo": ("TRPO", "trpo_params", True),
+        "sac":  ("SAC",  "sac_params",  False),  # off-policy
+        "td3":  ("TD3",  "td3_params",  False),
+        "ddpg": ("DDPG", "ddpg_params", False),
+    }
+
+    @staticmethod
+    def _to_kwargs(params):
+        if params is None:
+            return {}
+        if dataclasses.is_dataclass(params):
+            try:
+                from rl_train.utils.data_types import DictionableDataclass
+                return DictionableDataclass.to_dict(params)
+            except Exception:
+                return dataclasses.asdict(params)
+        if isinstance(params, dict):
+            return params
+        if hasattr(params, "dict") and callable(params.dict):
+            return params.dict()
+        if hasattr(params, "__dict__"):
+            return {k: v for k, v in vars(params).items() if not k.startswith("_")}
+        return {}
+
+    @staticmethod
+    def _detect_algo(config):
+        # 1) Explicit flag wins if present and recognized
+        algo = getattr(config, "algo", None)
+        if isinstance(algo, str) and algo.lower() in EnvironmentHandler.ALGO_MAP:
+            return algo.lower()
+
+        # 2) Otherwise infer from a non-empty params block
+        for key, (_, param_attr, _) in EnvironmentHandler.ALGO_MAP.items():
+            params = getattr(config, param_attr, None)
+            if params is None:
+                continue
+            try:
+                from rl_train.utils.data_types import DictionableDataclass
+                as_dict = DictionableDataclass.to_dict(params)
+            except Exception:
+                as_dict = dict(params.__dict__) if hasattr(params, "__dict__") else {}
+            if isinstance(as_dict, dict) and len(as_dict) > 0:
+                return key
+
+        raise ValueError("Could not determine RL algorithm. Set config.algo or provide a non-empty '*_params' block.")
+
+
+    @staticmethod
+    def _algo_spec(config):
+        algo_key = EnvironmentHandler._detect_algo(config)
+        cls_name, params_attr, is_on_policy = EnvironmentHandler.ALGO_MAP[algo_key]
+        return algo_key, cls_name, params_attr, is_on_policy
+
+
     @staticmethod
     def create_environment(config, is_rendering_on:bool, is_evaluate_mode:bool = False):
 
@@ -30,7 +89,21 @@ class EnvironmentHandler:
                 if is_rendering_on:
                     env.mujoco_render_frames = True
                 config.env_params.num_envs = 1
-                config.ppo_params.n_steps = config.ppo_params.batch_size
+
+                # Only adjust n_steps for on-policy algos that actually use it
+                try:
+                    _, _, params_attr, is_on_policy = EnvironmentHandler._algo_spec(config)
+                    if is_on_policy:
+                        algo_params = getattr(config, params_attr, None)
+                        if isinstance(algo_params, dict):
+                            if "n_steps" in algo_params and "batch_size" in algo_params:
+                                algo_params["n_steps"] = algo_params["batch_size"]
+                        elif algo_params is not None and hasattr(algo_params, "n_steps") and hasattr(algo_params, "batch_size"):
+                            algo_params.n_steps = algo_params.batch_size
+                except Exception:
+                    pass
+
+
             else:
                 env = SubprocVecEnv([lambda: (gym.make(config.env_params.env_id, 
                                                     **gym_make_args)).unwrapped 
@@ -129,46 +202,85 @@ class EnvironmentHandler:
 
         return custom_callback
     @staticmethod
-    def get_stable_baselines3_model(config:TrainSessionConfigBase, env, trained_model_path:str|None=None):
+    def get_stable_baselines3_model(config: TrainSessionConfigBase, env, trained_model_path: str | None = None):
         import stable_baselines3
         from rl_train.train.policies.rl_agent_human import HumanActorCriticPolicy
         from rl_train.train.policies.rl_agent_exo import HumanExoActorCriticPolicy
-        if config.env_params.env_id in ["myoAssistLegImitationExo-v0"]:
-            policy_class = HumanExoActorCriticPolicy
-            print(f"Using HumanExoActorCriticPolicy")
-        else:
-            policy_class = HumanActorCriticPolicy
-            print(f"Using HumanActorCriticPolicy")
-        if trained_model_path is not None:
-            print(f"Loading trained model from {trained_model_path}")
-            model = stable_baselines3.PPO.load(trained_model_path,
-                                            env=env,
-                                            custom_objects = {"policy_class": policy_class},
-                                            )
-        elif config.env_params.prev_trained_policy_path:
-            print(f"Loading previous trained policy from {config.env_params.prev_trained_policy_path}")
-            # when should I reset the (value)network?
-            model = stable_baselines3.PPO.load(config.env_params.prev_trained_policy_path,
-                                            env=env,
-                                            custom_objects = {"policy_class": policy_class},
 
-                                            # policy_kwargs=DictionableDataclass.to_dict(config.policy_params),
-                                            verbose=2,
-                                            **DictionableDataclass.to_dict(config.ppo_params),
-                                            )
-            # print(f"Resetting network: {config.custom_policy_params.reset_shared_net_after_load=}, {config.custom_policy_params.reset_policy_net_after_load=}, {config.custom_policy_params.reset_value_net_after_load=}")
-            model.policy.reset_network(reset_shared_net=config.policy_params.custom_policy_params.reset_shared_net_after_load,
-                                    reset_policy_net=config.policy_params.custom_policy_params.reset_policy_net_after_load,
-                                    reset_value_net=config.policy_params.custom_policy_params.reset_value_net_after_load)
+        # Debug print
+        algo_key, cls_name, params_attr, is_on_policy = EnvironmentHandler._algo_spec(config)
+        print(f"[ALG DETECT] algo='{getattr(config, 'algo', None)}' -> {algo_key} | class={cls_name} | params={params_attr}")
+
+
+        # Figure out algo + params first
+        algo_key, cls_name, params_attr, is_on_policy = EnvironmentHandler._algo_spec(config)
+
+        # Choose policy class
+        if is_on_policy:
+            # Keep your custom on-policy policies
+            if config.env_params.env_id in ["myoAssistLegImitationExo-v0"]:
+                policy_class = HumanExoActorCriticPolicy
+                print("Using HumanExoActorCriticPolicy")
+            else:
+                policy_class = HumanActorCriticPolicy
+                print("Using HumanActorCriticPolicy")
         else:
-            model = stable_baselines3.PPO(
+            # Off-policy (SAC/TD3/DDPG) -> use SB3 built-in MlpPolicy
+            policy_class = "MlpPolicy"
+            print(f"Using built-in {policy_class} for off-policy algo '{algo_key}'")
+
+
+        # Choose algo + params
+        algo_key, cls_name, params_attr, _ = EnvironmentHandler._algo_spec(config)
+        if algo_key == "trpo":
+            from sb3_contrib import TRPO as algo_cls
+        else:
+            algo_cls = getattr(stable_baselines3, cls_name)
+
+        algo_params = getattr(config, params_attr, None)
+        if algo_params is None:
+            raise ValueError(f"Missing parameter block '{params_attr}' for algo '{algo_key}'")
+
+        algo_kwargs = EnvironmentHandler._to_kwargs(algo_params)
+
+        # After algo detection:
+        if is_on_policy:
+            policy_kwargs = EnvironmentHandler._to_kwargs(getattr(config, "policy_params", None))
+        else:
+            # Off-policy (SAC/TD3/DDPG): use optional offpolicy block, or let SB3 defaults apply
+            policy_kwargs = EnvironmentHandler._to_kwargs(getattr(config, "offpolicy_policy_params", None)) or None
+
+
+
+        if trained_model_path is not None:
+            print(f"Loading trained model ({cls_name}) from {trained_model_path}")
+            custom_objects = {"policy_class": policy_class} if is_on_policy else None
+            model = algo_cls.load(trained_model_path, env=env, custom_objects=custom_objects)
+        elif getattr(config.env_params, "prev_trained_policy_path", None):
+            prev_path = config.env_params.prev_trained_policy_path
+            print(f"Loading previous trained policy ({cls_name}) from {prev_path}")
+            custom_objects = {"policy_class": policy_class} if is_on_policy else None
+            model = algo_cls.load(prev_path, env=env, custom_objects=custom_objects)
+            # Optionally reset parts of the network after load if your custom policy supports it
+            if hasattr(model, "policy") and hasattr(config, "policy_params"):
+                cps = config.policy_params.custom_policy_params
+                if hasattr(model.policy, "reset_network"):
+                    model.policy.reset_network(
+                        reset_shared_net=getattr(cps, "reset_shared_net_after_load", False),
+                        reset_policy_net=getattr(cps, "reset_policy_net_after_load", False),
+                        reset_value_net=getattr(cps, "reset_value_net_after_load", False),
+                    )
+        else:
+            print(f"Instantiating {cls_name} with '{params_attr}'")
+            model = algo_cls(
                 policy=policy_class,
                 env=env,
-                policy_kwargs=DictionableDataclass.to_dict(config.policy_params),
+                policy_kwargs=policy_kwargs,
                 verbose=2,
-                **DictionableDataclass.to_dict(config.ppo_params),
+                **algo_kwargs,
             )
         return model
+
     @staticmethod
     def updateconfig_from_model_policy(config, model):
         pass

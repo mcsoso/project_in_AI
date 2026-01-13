@@ -1,7 +1,7 @@
 {
-    "results_dir": "results/optim_results/tutorial_debug",
+    "results_dir": "results/optim_results/humotech_0922_1851",
     "evaluation_mode": "short",
     "output_dir": "evaluation_outputs",
-    "include_best": false,
+    "include_best": true,
     "include_bestlast": true
 }

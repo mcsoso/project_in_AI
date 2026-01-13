@@ -1,9 +1,0 @@
-Right Leg Statistics:
-  Hip    - Mean:   -2.4deg | Std:  18.6deg | Min:  -21.6deg | Max:   45.6deg
-  Knee   - Mean:  -12.1deg | Std:  11.9deg | Min:  -50.7deg | Max:    3.4deg
-  Ankle  - Mean:    2.8deg | Std:  15.7deg | Min:  -38.8deg | Max:   26.4deg
-
-Left Leg Statistics:
-  Hip    - Mean:  -11.7deg | Std:  14.9deg | Min:  -22.5deg | Max:   38.6deg
-  Knee   - Mean:  -14.6deg | Std:  10.1deg | Min:  -35.4deg | Max:    3.8deg
-  Ankle  - Mean:    2.6deg | Std:  17.5deg | Min:  -41.3deg | Max:   27.2deg
